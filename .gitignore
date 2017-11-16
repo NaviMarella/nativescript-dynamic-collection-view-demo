@@ -1,0 +1,5 @@
+.idea/
+node_modules/
+/platforms/
+/app/**/*.js
+/app/**/*.css
