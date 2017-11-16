@@ -1,10 +1,17 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, NgZone, OnInit } from "@angular/core";
 import { ObservableArray } from "data/observable-array";
 import { RouterExtensions } from "nativescript-angular/router";
-import { ListViewEventData } from "nativescript-pro-ui/listview";
+import { ListViewEventData, RadListView } from "nativescript-pro-ui/listview";
 
 import { Car } from "./shared/car.model";
 import { CarService } from "./shared/car.service";
+
+import "rxjs/add/observable/of";
+import "rxjs/add/operator/delay";
+import { Observable } from "rxjs/Observable";
+
+import { debounce, noop } from "lodash";
+import { myUICollectionViewDelegate as MyUICollectionViewDelegate } from "../my-ui-collection-view-delegate";
 
 /* ***********************************************************
 * This is the master list component in the master-detail structure.
@@ -19,12 +26,21 @@ import { CarService } from "./shared/car.service";
 })
 export class CarListComponent implements OnInit {
     private _isLoading: boolean = false;
+    private _isLoadingOnDemand = false;
     private _cars: ObservableArray<Car> = new ObservableArray<Car>([]);
+    private _listView: RadListView;
+    private _tearDownLoadOnDemand: () => void;
 
     constructor(
         private _carService: CarService,
-        private _routerExtensions: RouterExtensions
-    ) { }
+        private _routerExtensions: RouterExtensions,
+        private _ngZone: NgZone
+    ) {}
+
+    onListViewLoaded(args: ListViewEventData) {
+        this._listView = args.object;
+        this._listView.ios.delegate = MyUICollectionViewDelegate.initWithOwner(new WeakRef(this._listView));
+    }
 
     /* ***********************************************************
     * Use the "ngOnInit" handler to get the data and assign it to the
@@ -54,6 +70,28 @@ export class CarListComponent implements OnInit {
         return this._isLoading;
     }
 
+    onLoadMoreItemsRequested(args: ListViewEventData) {
+        if (this._isLoadingOnDemand) {
+            return;
+        }
+
+        this._isLoadingOnDemand = true;
+
+        Observable.from(this._cars.slice(0, 9))
+            .delay(1000)
+            .subscribe(
+                (car: Car) => {
+                    this._ngZone.run(() => {
+                        this._cars.push(car);
+                    });
+                },
+                this.tearDownLoadOnDemand,
+                this.tearDownLoadOnDemand
+            );
+
+        args.returnValue = true;
+    }
+
     /* ***********************************************************
     * Use the "itemTap" event handler of the <RadListView> to navigate to the
     * item details page. Retrieve a reference for the data item (the id) and pass it
@@ -73,5 +111,18 @@ export class CarListComponent implements OnInit {
                 curve: "ease"
             }
         });
+    }
+
+    get tearDownLoadOnDemand() {
+        if (!this._listView) {
+            return noop;
+        } else if (!this._tearDownLoadOnDemand) {
+            this._tearDownLoadOnDemand = debounce(() => {
+                this._isLoadingOnDemand = false;
+                this._listView.notifyLoadOnDemandFinished();
+            }, 300);
+        }
+
+        return this._tearDownLoadOnDemand;
     }
 }

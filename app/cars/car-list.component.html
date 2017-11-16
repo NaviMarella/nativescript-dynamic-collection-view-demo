@@ -5,7 +5,13 @@
 </ActionBar>
 
 <GridLayout class="page page-content">
-    <RadListView [items]="cars" (itemTap)="onCarItemTap($event)" class="list-group">
+    <RadListView [items]="cars"
+                 class="list-group"
+                 loadOnDemandMode="Auto"
+                 (loadMoreDataRequested)="onLoadMoreItemsRequested($event)"
+                 (loaded)="onListViewLoaded($event)"
+                 (itemTap)="onCarItemTap($event)">
+
     <!--
     RadListView is a UI component part of the Progress NativeScript UI set of components.
     Learn more about the RadListView UI component and how it can be customized in this documentation article:

@@ -1,0 +1,9 @@
+{
+    "name": "nativescript-dynamic-collection-view",
+    "version": "0.0.1",
+    "nativescript": {
+      "platforms": {
+        "ios": "3.3.0"
+      }
+    }
+  }
